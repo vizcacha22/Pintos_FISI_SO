@@ -99,8 +99,8 @@ struct thread
    /* Shared between thread.c and synch.c. */
    struct list_elem elem; /* List element. */
 
-   int nice;
-   int recent_cpu;
+   int nice;         /*Niceness between -20 a 20*/
+   int recent_cpu;   /*cpu usage per tick*/
 
 #ifdef USERPROG
    /* Owned by userprog/process.c. */

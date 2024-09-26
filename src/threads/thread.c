@@ -21,7 +21,7 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
-int load_avg;
+int load_avg; /*cpu load*/
 
 /* */
 struct list sleep_list;
