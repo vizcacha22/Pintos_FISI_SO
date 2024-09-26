@@ -93,9 +93,9 @@ struct thread
    int64_t local_ticks;
    int init_priority;
    struct lock *locks_waiting;
-   struct list prio_donation;
    struct list_elem prio_donation_elem;
-
+   struct list prio_donation;
+   
    /* Shared between thread.c and synch.c. */
    struct list_elem elem; /* List element. */
 
