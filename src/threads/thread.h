@@ -95,12 +95,19 @@ struct thread
    struct lock *locks_waiting;
    struct list_elem prio_donation_elem;
    struct list prio_donation;
-   
+
    /* Shared between thread.c and synch.c. */
    struct list_elem elem; /* List element. */
 
-   int nice;         /*Niceness between -20 a 20*/
-   int recent_cpu;   /*cpu usage per tick*/
+#ifdef USERPROG
+   /* Owned by userprog/process.c. */
+   uint32_t *pagedir; /* Page directory. */
+
+   uint8_t *saved_sp; /* Primera página no asignada de la pila, utilizada para el crecimiento de la pila en el controlador de errores de página */
+#endif
+
+   int nice;       /*Niceness between -20 a 20*/
+   int recent_cpu; /*cpu usage per tick*/
 
 #ifdef USERPROG
    /* Owned by userprog/process.c. */
