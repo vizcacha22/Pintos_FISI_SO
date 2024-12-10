@@ -375,46 +375,24 @@ validate_segment(const struct Elf32_Phdr *phdr, struct file *file)
    Return true if successful, false if a memory allocation error
    or disk read error occurs. */
 static bool
-load_segment(struct file *file, off_t ofs, uint8_t *upage,
-             uint32_t read_bytes, uint32_t zero_bytes, bool writable)
+load_executable_segment(struct file *file, off_t offset, uint8_t *virtual_address,
+                        uint32_t read_size, uint32_t zero_size, bool writable)
 {
-  ASSERT((read_bytes + zero_bytes) % PGSIZE == 0);
-  ASSERT(pg_ofs(upage) == 0);
-  ASSERT(ofs % PGSIZE == 0);
-
-  file_seek(file, ofs);
-  while (read_bytes > 0 || zero_bytes > 0)
+  while (read_size > 0 || zero_size > 0)
   {
-    /* Calculate how to fill this page.
-       We will read PAGE_READ_BYTES bytes from FILE
-       and zero the final PAGE_ZERO_BYTES bytes. */
-    size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
-    size_t page_zero_bytes = PGSIZE - page_read_bytes;
+    size_t bytes_to_read = read_size < PGSIZE ? read_size : PGSIZE;
+    size_t bytes_to_zero = PGSIZE - bytes_to_read;
 
-    /* Get a page of memory. */
-    uint8_t *kpage = palloc_get_page(PAL_USER);
-    if (kpage == NULL)
-      return false;
-
-    /* Load this page. */
-    if (file_read(file, kpage, page_read_bytes) != (int)page_read_bytes)
+    if (!create_supplemental_page_entry(thread_current()->supplemental_page_table,
+                                        file, offset, bytes_to_read, bytes_to_zero, writable))
     {
-      palloc_free_page(kpage);
-      return false;
-    }
-    memset(kpage + page_read_bytes, 0, page_zero_bytes);
-
-    /* Add the page to the process's address space. */
-    if (!install_page(upage, kpage, writable))
-    {
-      palloc_free_page(kpage);
       return false;
     }
 
-    /* Advance. */
-    read_bytes -= page_read_bytes;
-    zero_bytes -= page_zero_bytes;
-    upage += PGSIZE;
+    read_size -= bytes_to_read;
+    zero_size -= bytes_to_zero;
+    virtual_address += PGSIZE;
+    offset += bytes_to_read;
   }
   return true;
 }

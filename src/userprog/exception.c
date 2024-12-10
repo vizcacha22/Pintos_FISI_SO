@@ -127,6 +127,13 @@ page_fault(struct intr_frame *f)
    bool user;        /* True: access by user, false: access by kernel. */
    void *fault_addr; /* Fault address. */
 
+   void *faulting_address = pg_round_down(frame->fault_addr);
+   struct hash *supplemental_table = thread_current()->supplemental_page_table;
+   struct hash *spt;
+   void *upage;
+
+   void *esp;
+
    /* Obtain faulting address, the virtual address that was
       accessed to cause the fault.  It may point to code or to
       data.  It is not necessarily the address of the instruction
@@ -148,54 +155,32 @@ page_fault(struct intr_frame *f)
    write = (f->error_code & PF_W) != 0;
    user = (f->error_code & PF_U) != 0;
 
-   /* To implement virtual memory, delete the rest of the function
-      body, and replace it with code that brings in the page to
-      which fault_addr refers. */
+   bool page_not_present = (frame->error_code & PF_P) == 0;
+   if (!page_not_present || is_kernel_vaddr(faulting_address))
+      sys_exit(-1);
+
+   if (load_virtual_page(supplemental_table, faulting_address))
+      return;
+
+   upage = pg_round_down(fault_addr);
+
+   if (is_kernel_vaddr(fault_addr) || !not_present)
+      sys_exit(-1);
+
+   esp = user ? f->esp : thread_current()->esp;
+   if (esp - 32 <= fault_addr && PHYS_BASE - MAX_STACK_SIZE <= fault_addr)
+      if (!get_spte(spt, upage))
+         init_zero_spte(spt, upage);
+
+   if (load_page(spt, upage))
+      return;
+
+   sys_exit(-1);
+
    printf("Page fault at %p: %s error %s page in %s context.\n",
           fault_addr,
           not_present ? "not present" : "rights violation",
           write ? "writing" : "reading",
           user ? "user" : "kernel");
    kill(f);
-}
-
-static void
-kill_process(void)
-{
-   printf("%s: exit(%d)\n", (char *)thread_current()->name, -1);
-   thread_exit();
-}
-static bool
-can_stack_grow(void *esp, void *fault_addr)
-{
-   return ((uint8_t *)esp - (uint8_t *)fault_addr == 4 || (uint8_t *)esp - (uint8_t *)fault_addr == 32 || fault_addr >= esp);
-}
-static bool
-stack_grow(void *v_addr)
-{
-   struct thread *curr = thread_current();
-
-   struct page *u_page = NULL;
-   while (curr->saved_sp != (uint8_t *)v_addr - PGSIZE)
-   {
-      u_page = malloc(sizeof(struct page));
-      if (u_page == NULL)
-         return false;
-
-      /* Prepare virtual page. */
-      u_page->v_addr = curr->saved_sp;
-      u_page->frame = NULL;
-      u_page->writable = true;
-      u_page->file_info = NULL;
-      hash_insert(&thread_current()->sup_page_table, &u_page->elem);
-      curr->saved_sp -= PGSIZE;
-   }
-
-   if (!load_page(u_page))
-   {
-      printf("Page Loading Failed\n");
-      free(u_page);
-      return false;
-   }
-   return true;
 }
