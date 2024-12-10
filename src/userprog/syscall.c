@@ -2,7 +2,9 @@
 #include <stdio.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
+#ifndef USERPROG
 #define USERPROG
+#endif
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "devices/input.h"
@@ -11,13 +13,17 @@
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include <string.h>
+#include <stdlib.h>
 
 
 static void syscall_handler (struct intr_frame *);
+bool validation_user_pointer(const void *ptr);
+bool validate_user_range(const void *user_buffer, size_t size);
+bool user_to_kernel(void *kernel_buffer, const void *user_buffer, size_t size);
 
 void
 syscall_init (void){
-  intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
+  intr_register_int (0x30, 3, INTR_OFF, syscall_handler, "syscall");
 }
 
 static void
@@ -48,23 +54,19 @@ bool validation_user_pointer(const void *ptr){
             pagedir_get_page(thread_current()->pagedir, ptr) != NULL);
 }
 
-bool validate_user_range(const void *user_buffer, size_t size) {
-    const uint8_t *start = (const uint8_t *)user_buffer;
-    const uint8_t *end = start + size;
-    while (start < end) {
-        if (!is_user_vaddr(start) || pagedir_get_page(thread_current()->pagedir, start) == NULL) {
-            return false;
-        }
-        start = pg_round_up(start + 1);
-    }
-    return true;
-}
-
 bool user_to_kernel(void *kernel_buffer, const void *user_buffer, size_t size) {
     if (!validate_user_range(user_buffer, size)) {
         return false; 
     }
     memcpy(kernel_buffer, user_buffer, size);
+    return true;
+}
+
+bool kernel_to_user(void *user_buffer, const void *kernel_buffer, size_t size) {
+    if (!validate_user_range(user_buffer, size)) {
+        return false; 
+    }
+    memcpy(user_buffer, kernel_buffer, size);
     return true;
 }
 
