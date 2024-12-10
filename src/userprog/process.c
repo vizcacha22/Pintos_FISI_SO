@@ -382,13 +382,10 @@ load_executable_segment(struct file *file, off_t offset, uint8_t *virtual_addres
   {
     size_t bytes_to_read = read_size < PGSIZE ? read_size : PGSIZE;
     size_t bytes_to_zero = PGSIZE - bytes_to_read;
-
-    if (!create_supplemental_page_entry(thread_current()->supplemental_page_table,
-                                        file, offset, bytes_to_read, bytes_to_zero, writable))
+    if (!create_supplemental_page_entry(thread_current()->supplemental_page_table, file, offset, bytes_to_read, bytes_to_zero, writable))
     {
       return false;
     }
-
     read_size -= bytes_to_read;
     zero_size -= bytes_to_zero;
     virtual_address += PGSIZE;
@@ -472,7 +469,6 @@ static bool
 install_page(void *upage, void *kpage, bool writable)
 {
   struct thread *t = thread_current();
-
   /* Verify that there's not already a page at that virtual
      address, then map our page there. */
   return (pagedir_get_page(t->pagedir, upage) == NULL && pagedir_set_page(t->pagedir, upage, kpage, writable));
