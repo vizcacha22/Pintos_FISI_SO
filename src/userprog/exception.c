@@ -126,14 +126,11 @@ page_fault(struct intr_frame *f)
    bool write;       /* True: access was write, false: access was read. */
    bool user;        /* True: access by user, false: access by kernel. */
    void *fault_addr; /* Fault address. */
-
    void *faulting_address = pg_round_down(frame->fault_addr);
    struct hash *supplemental_table = thread_current()->supplemental_page_table;
    struct hash *spt;
    void *upage;
-
    void *esp;
-
    /* Obtain faulting address, the virtual address that was
       accessed to cause the fault.  It may point to code or to
       data.  It is not necessarily the address of the instruction
@@ -176,7 +173,6 @@ page_fault(struct intr_frame *f)
       return;
 
    sys_exit(-1);
-
    printf("Page fault at %p: %s error %s page in %s context.\n",
           fault_addr,
           not_present ? "not present" : "rights violation",
